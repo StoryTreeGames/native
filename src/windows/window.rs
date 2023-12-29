@@ -127,18 +127,14 @@ impl Window {
                 cbSize: size_of::<MONITORINFO>() as u32,
                 ..Default::default()
             };
-            let placement = unsafe {
-                println!("{:?}", mi);
-                    GetMonitorInfoW(
-                        MonitorFromWindow(self.handle, MONITOR_DEFAULTTOPRIMARY),
-                        &mut mi,
-                    )
-                };
-            eprintln!("{:?}", windows::core::Error::from_win32());
             if unsafe { GetWindowPlacement(self.handle, self.prev_style.as_mut().unwrap()) }.is_ok()
-                && bool::from(placement)
+                && bool::from(unsafe {
+                GetMonitorInfoW(
+                    MonitorFromWindow(self.handle, MONITOR_DEFAULTTOPRIMARY),
+                    &mut mi,
+                )
+            })
             {
-                println!("{:?}", mi);
                 unsafe {
                     SetWindowLongW(
                         self.handle,
@@ -268,7 +264,7 @@ impl WindowContext for Window {
                                         &is_dark_mode() as *const _ as *const _,
                                         4,
                                     )
-                                    .unwrap();
+                                        .unwrap();
                                     CallWindowProcW(
                                         Some(wnd_proc),
                                         handle,
@@ -375,7 +371,7 @@ pub fn icon(path: Option<HSTRING>) -> HICON {
                 HANDLE(0)
             }
         }
-        .0
+            .0
     }));
     result
 }

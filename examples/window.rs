@@ -1,41 +1,19 @@
 extern crate storytree_native;
 
 use std::fmt::Debug;
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use storytree_native::event::run_with_state;
-use storytree_native::style::{Background, Theme};
-use storytree_native::toggle_fullscreen;
+
 use storytree_native::{
     event::{
         close,
-        keyboard::{Key, KeyboardEvent},
         Event,
+        keyboard::{Key, KeyEvent},
     },
     prelude::*,
     Window,
 };
-
-#[derive(Clone)]
-struct State<T>(Arc<RwLock<T>>);
-impl<T> State<T> {
-    pub fn new(state: T) -> Self {
-        Self(Arc::new(RwLock::new(state)))
-    }
-
-    pub fn as_ref(&self) -> RwLockReadGuard<'_, T> {
-        self.0.read().unwrap()
-    }
-
-    fn as_mut(&self) -> RwLockWriteGuard<'_, T> {
-        self.0.write().unwrap()
-    }
-}
-
-impl<T: Debug> Debug for State<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
+use storytree_native::event::App;
+use storytree_native::style::{Background, Theme};
+use storytree_native::toggle_fullscreen;
 
 /// Controls the state of the modifier keys
 #[derive(Debug, Default, Clone, Copy)]
@@ -56,23 +34,23 @@ fn main() {
         .show()
         .unwrap();
 
-    let state = State::new(KeyState::default());
-    run_with_state(state, move |id, event, state| match event {
-        Event::Keyboard(KeyboardEvent::KeyDown(key)) => match key {
+    App::run_with(KeyState::default(),  |id, event, state| match event {
+        Event::Keyboard(KeyEvent::KeyDown(key)) => match key {
             Key::Control => state.as_mut().ctrl = true,
             Key::Alt => state.as_mut().alt = true,
             Key::Shift => state.as_mut().shift = true,
             Key::Capital => state.as_mut().caps = true,
+
+            // Window controls
+            Key::F11 => toggle_fullscreen(id),
             Key::Escape => close(id),
-            Key::F11 => {
-                toggle_fullscreen(id);
-            }
+
             key => {
                 // Print key with current modifiers
                 println!("{:?}: {:?}", state.as_ref(), key);
             }
         },
-        Event::Keyboard(KeyboardEvent::KeyUp(key)) => match key {
+        Event::Keyboard(KeyEvent::KeyUp(key)) => match key {
             Key::Control => state.as_mut().ctrl = false,
             Key::Alt => state.as_mut().alt = false,
             Key::Shift => state.as_mut().shift = false,
@@ -80,5 +58,5 @@ fn main() {
             _ => {}
         },
         _ => {}
-    })
+    });
 }

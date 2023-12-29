@@ -2,20 +2,21 @@ extern crate storytree_native;
 
 use storytree_native::{
     event::{
-        keyboard::{Key, KeyboardEvent},
-        run, Event,
+        Event
+        , keyboard::{Key, KeyEvent},
     },
     modal::{Dialog, FontWeight},
     prelude::{WindowBuilder, WindowContext},
     Window,
 };
+use storytree_native::event::App;
 
 fn main() {
     let _ = Window::builder().title("Rust Window").show().unwrap();
 
     // Run the Program, when the window opens `Escape` can be pressed to open a file select dialog
-    run(|id, event| match event {
-        Event::Keyboard(KeyboardEvent::KeyDown(key)) => match key {
+    App::run(|id, event| match event {
+        Event::Keyboard(KeyEvent::KeyDown(key)) => match key {
             Key::Escape => {
                 match Dialog::font()
                     .weight(FontWeight::Bold)

@@ -10,9 +10,9 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WM_DESTROY, WM_ERASEBKGND, WM_PAINT,
 };
 
-use crate::event::keyboard::KeyboardEvent;
+use crate::event::keyboard::KeyEvent;
 use crate::event::mouse::MouseEvent;
-use crate::event::{keyboard, mouse, Event, IntoEventResult};
+use crate::event::{keyboard, mouse, Event, IntoEventResult, State};
 use crate::style::{Background, Theme};
 use crate::window::WindowOptions;
 use crate::windows::{is_dark_mode, swap_rb};
@@ -45,7 +45,7 @@ thread_local! {
 impl From<(u32, WPARAM, LPARAM)> for Event {
     fn from(v: (u32, WPARAM, LPARAM)) -> Self {
         match v.0 {
-            _ if keyboard::KeyboardEvent::message(v.0) => Event::Keyboard(KeyboardEvent::from(v)),
+            _ if keyboard::KeyEvent::message(v.0) => Event::Keyboard(KeyEvent::from(v)),
             _ if mouse::MouseEvent::message(v.0) => Event::Mouse(MouseEvent::from(v)),
             _ => panic!("Unknown event message: {}", v.0),
         }
@@ -53,14 +53,14 @@ impl From<(u32, WPARAM, LPARAM)> for Event {
 }
 
 fn input_message(message: u32) -> bool {
-    KeyboardEvent::message(message) || MouseEvent::message(message)
+    KeyEvent::message(message) || MouseEvent::message(message)
 }
 
-pub fn run<R, F, T>(state: T, callback: F)
+pub fn run<R, F, T>(state: State<T>, callback: F)
 where
     R: IntoEventResult,
-    F: (Fn(isize, Event, T) -> R) + 'static + Sync + Send,
-    T: Clone + Send + Sync + 'static,
+    F: (Fn(isize, Event, State<T>) -> R) + 'static + Sync + Send,
+    T: Send + Sync + Clone + 'static,
 {
     let mut message = MSG::default();
     let state = state;

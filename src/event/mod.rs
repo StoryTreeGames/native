@@ -1,6 +1,9 @@
 use std::{cell::RefCell, sync::{Arc, RwLockWriteGuard}};
+use std::fmt::Debug;
+use std::marker::PhantomData;
+use std::sync::{RwLock, RwLockReadGuard};
 
-use keyboard::KeyboardEvent;
+use keyboard::KeyEvent;
 use mouse::MouseEvent;
 use crate::event::mouse::MouseEventType;
 
@@ -32,7 +35,7 @@ pub struct PaintEvent {
 pub enum Event {
     Close,
     Repaint,
-    Keyboard(KeyboardEvent),
+    Keyboard(KeyEvent),
     Mouse(MouseEvent),
 }
 
@@ -59,21 +62,62 @@ pub fn quit(code: i32) {
     std::process::exit(code);
 }
 
-pub fn run<R, F>(callback: F) 
-where
-    R: IntoEventResult,
-    F: Fn(isize, Event, ()) -> R + 'static + Sync + Send,
-{
-    #[cfg(target_os = "windows")]
-    crate::windows::event::run((), callback);
+#[derive(Clone)]
+pub struct State<T: Send + Sync + Clone>(Arc<RwLock<T>>);
+impl<T: Clone + Send + Sync> State<T> {
+    pub fn new(state: T) -> Self {
+        Self(Arc::new(RwLock::new(state)))
+    }
+
+    pub fn as_ref(&self) -> RwLockReadGuard<'_, T> {
+        self.0.read().unwrap()
+    }
+
+    pub fn as_mut(&self) -> RwLockWriteGuard<'_, T> {
+        self.0.write().unwrap()
+    }
+}
+impl Default for State<()> {
+    fn default() -> Self {
+        Self(Arc::new(RwLock::new(())))
+    }
 }
 
-pub fn run_with_state<R, F, T>(state: T, callback: F) 
+impl<T: Send + Sync + Clone + Debug> Debug for State<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+pub struct App;
+impl App
+{
+    pub fn run<F, R>(callback: F)
+    where
+        F: Fn(isize, Event, State<()>) -> R + 'static + Sync + Send,
+        R: IntoEventResult,
+    {
+        #[cfg(target_os = "windows")]
+        crate::windows::event::run(State::default(), callback);
+    }
+
+    pub fn run_with<S, F, R>(state: S, callback: F)
+        where
+            S: Clone + Send + Sync + 'static,
+            F: Fn(isize, Event, State<S>) -> R + 'static + Sync + Send,
+            R: IntoEventResult,
+    {
+        #[cfg(target_os = "windows")]
+        crate::windows::event::run(State::new(state), callback);
+    }
+}
+
+pub fn run<R, F, T>(state: T, callback: F)
 where
     R: IntoEventResult,
-    F: Fn(isize, Event, T) -> R + 'static + Sync + Send,
+    F: Fn(isize, Event, State<T>) -> R + 'static + Sync + Send,
     T: Clone + Send + Sync + 'static
 {
     #[cfg(target_os = "windows")]
-    crate::windows::event::run(state, callback);
+    crate::windows::event::run(State::new(state), callback);
 }

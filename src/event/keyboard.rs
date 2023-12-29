@@ -2,29 +2,29 @@ use windows::Win32::Foundation::{LPARAM, WPARAM};
 use windows::Win32::UI::WindowsAndMessaging::{WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP};
 
 #[derive(Debug, Clone)]
-pub enum KeyboardEvent {
+pub enum KeyEvent {
     KeyDown(Key),
     KeyUp(Key),
     KeyHold(Key),
 }
 
-impl From<(u32, WPARAM, LPARAM)> for KeyboardEvent {
+impl From<(u32, WPARAM, LPARAM)> for KeyEvent {
     fn from(v: (u32, WPARAM, LPARAM)) -> Self {
         match v.0 {
             WM_KEYDOWN | WM_SYSKEYDOWN => {
                 if v.2 .0 & 1 << 30 == 0 {
-                    KeyboardEvent::KeyDown(Key::from(v.1))
+                    KeyEvent::KeyDown(Key::from(v.1))
                 } else {
-                    KeyboardEvent::KeyHold(Key::from(v.1))
+                    KeyEvent::KeyHold(Key::from(v.1))
                 }
             }
-            WM_KEYUP | WM_SYSKEYUP => KeyboardEvent::KeyUp(Key::from(v.1)),
+            WM_KEYUP | WM_SYSKEYUP => KeyEvent::KeyUp(Key::from(v.1)),
             _ => panic!("Unknown keyboard event message: {}", v.0),
         }
     }
 }
 
-impl KeyboardEvent {
+impl KeyEvent {
     pub fn message(m: u32) -> bool {
         match m {
             WM_KEYDOWN | WM_SYSKEYDOWN | WM_KEYUP | WM_SYSKEYUP => true,
