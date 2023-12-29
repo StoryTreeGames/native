@@ -1,24 +1,47 @@
 use std::ffi::c_void;
+use std::mem::size_of;
+use std::ops::DerefMut;
 use std::sync::Mutex;
 
 use windows::core::HSTRING;
 use windows::Foundation::{EventRegistrationToken, TypedEventHandler};
-use windows::UI::ViewManagement::UISettings;
 use windows::Win32::Foundation::{BOOL, HANDLE, HMODULE, HWND, LPARAM, WPARAM};
 use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWINDOWATTRIBUTE};
-use windows::Win32::Graphics::Gdi::GetDC;
+use windows::Win32::Graphics::Gdi::{
+    GetDC, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY,
+};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows::Win32::UI::WindowsAndMessaging::{CallWindowProcW, CloseWindow, CreateWindowExW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, HICON, IDC_ARROW, IMAGE_ICON, LoadCursorW, LoadImageW, LR_DEFAULTSIZE, LR_LOADFROMFILE, LR_LOADTRANSPARENT, LR_SHARED, RegisterClassW, ShowWindow, SW_HIDE, SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE, SW_SHOWNORMAL, WINDOW_EX_STYLE, WM_ERASEBKGND, WM_PAINT, WNDCLASSW, WS_OVERLAPPEDWINDOW};
+use windows::Win32::UI::WindowsAndMessaging::{
+    CallWindowProcW, CloseWindow, CreateWindowExW, GetWindowLongW, GetWindowPlacement, LoadCursorW,
+    LoadImageW, RegisterClassW, SetWindowLongW, SetWindowPlacement, SetWindowPos, ShowWindow,
+    CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWL_STYLE, HICON, HWND_TOP, IDC_ARROW, IMAGE_ICON,
+    LR_DEFAULTSIZE, LR_LOADFROMFILE, LR_LOADTRANSPARENT, LR_SHARED, SWP_FRAMECHANGED, SWP_NOMOVE,
+    SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER, SW_HIDE, SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE,
+    SW_SHOWNORMAL, WINDOWPLACEMENT, WINDOW_EX_STYLE, WM_ERASEBKGND, WM_PAINT, WNDCLASSW,
+    WS_OVERLAPPEDWINDOW,
+};
+use windows::UI::ViewManagement::UISettings;
 
 use crate::e;
 use crate::error::Error;
 use crate::style::{Background, Theme};
 use crate::window::{WindowBuilder, WindowContext, WindowOptions};
 
-use super::{event::wnd_proc, IntoPCWSTR, is_dark_mode, UI_SETTINGS};
+use super::{event::wnd_proc, is_dark_mode, IntoPCWSTR, UI_SETTINGS};
 
 thread_local! {
     static WINDOWS: Mutex<Vec<Window>> = Mutex::new(Vec::new())
+}
+
+/// Set the fullscreen state of a window
+pub fn toggle_fullscreen(id: isize) {
+    WINDOWS.with(|windows| {
+        let mut windows = windows.lock().unwrap();
+        let windows = windows.deref_mut();
+        if let Some(window) = windows.iter_mut().find(|w| w.handle.0 == id) {
+            window.fullscreen();
+        }
+    })
 }
 
 macro_rules! boxed_unwrap {
@@ -82,6 +105,8 @@ pub struct Window {
     instance: HMODULE,
     options: WindowOptions,
 
+    prev_style: Option<WINDOWPLACEMENT>,
+
     theme_cookie: Option<EventRegistrationToken>,
 }
 
@@ -89,8 +114,66 @@ impl Window {
     pub fn options(&self) -> &WindowOptions {
         &self.options
     }
+
     pub fn set_handle(&mut self, handle: HWND) {
         self.handle = handle;
+    }
+
+    pub fn fullscreen(&mut self) {
+        let style = unsafe { GetWindowLongW(self.handle, GWL_STYLE) };
+        if self.prev_style.is_none() {
+            self.prev_style = Some(WINDOWPLACEMENT::default());
+            let mut mi = MONITORINFO {
+                cbSize: size_of::<MONITORINFO>() as u32,
+                ..Default::default()
+            };
+            let placement = unsafe {
+                println!("{:?}", mi);
+                    GetMonitorInfoW(
+                        MonitorFromWindow(self.handle, MONITOR_DEFAULTTOPRIMARY),
+                        &mut mi,
+                    )
+                };
+            eprintln!("{:?}", windows::core::Error::from_win32());
+            if unsafe { GetWindowPlacement(self.handle, self.prev_style.as_mut().unwrap()) }.is_ok()
+                && bool::from(placement)
+            {
+                println!("{:?}", mi);
+                unsafe {
+                    SetWindowLongW(
+                        self.handle,
+                        GWL_STYLE,
+                        style & !(WS_OVERLAPPEDWINDOW.0 as i32),
+                    );
+                    if let Err(err) = SetWindowPos(
+                        self.handle,
+                        HWND_TOP,
+                        mi.rcMonitor.left,
+                        mi.rcMonitor.top,
+                        mi.rcMonitor.right - mi.rcMonitor.left,
+                        mi.rcMonitor.bottom - mi.rcMonitor.top,
+                        SWP_NOOWNERZORDER | SWP_FRAMECHANGED,
+                    ) {
+                        eprintln!("{:?}", err);
+                    }
+                }
+            }
+        } else {
+            unsafe {
+                SetWindowLongW(self.handle, GWL_STYLE, style | WS_OVERLAPPEDWINDOW.0 as i32);
+                let _ = SetWindowPlacement(self.handle, self.prev_style.as_ref().unwrap());
+                let _ = SetWindowPos(
+                    self.handle,
+                    None,
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED,
+                );
+            }
+            self.prev_style = None;
+        }
     }
 }
 
@@ -106,6 +189,7 @@ impl WindowContext for Window {
                 handle: HWND(0),
                 instance: HMODULE(0),
                 class: HSTRING::from(format!("Window-StoryTree-{}", uuid::Uuid::new_v4())),
+                prev_style: None,
                 options,
                 theme_cookie: None,
             });

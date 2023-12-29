@@ -1,12 +1,13 @@
 use crate::error::Error;
 use windows::core::{HSTRING, PCSTR, PCWSTR};
-use windows::Win32::Foundation::{BOOL, WIN32_ERROR};
+use windows::Win32::Foundation::{BOOL, HWND};
 use windows::Win32::UI::Controls::Dialogs::COMMON_DLG_ERRORS;
 use windows::Win32::UI::Controls::Dialogs::{
     CDERR_DIALOGFAILURE, CDERR_FINDRESFAILURE, CDERR_INITIALIZATION, CDERR_LOADRESFAILURE,
     CDERR_LOADSTRFAILURE, CDERR_LOCKRESFAILURE, CDERR_MEMALLOCFAILURE, CDERR_MEMLOCKFAILURE,
     CDERR_NOHINSTANCE, CDERR_NOHOOK, CDERR_NOTEMPLATE, CDERR_REGISTERMSGFAIL, CDERR_STRUCTSIZE,
 };
+use windows::Win32::UI::WindowsAndMessaging::IsZoomed;
 use windows::UI::ViewManagement::{UIColorType, UISettings};
 
 pub mod event;
@@ -103,4 +104,9 @@ pub fn is_dark_mode() -> BOOL {
 pub(crate) fn swap_rb(value: u32) -> u32 {
     let values = u32::to_be_bytes(value);
     u32::from_be_bytes([values[0], values[3], values[2], values[1]])
+}
+
+/// Check if a window is maxamized
+pub fn is_maxamized(id: isize) -> bool {
+    unsafe { IsZoomed(HWND(id)) }.into()
 }

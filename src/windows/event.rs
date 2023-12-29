@@ -6,8 +6,8 @@ use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{CreateSolidBrush, FillRect, HDC};
 use windows::Win32::UI::WindowsAndMessaging::{
     DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetMessageW, GetWindowLongPtrW,
-    PostQuitMessage, SetWindowLongPtrW, TranslateMessage, CREATESTRUCTW, GWLP_USERDATA, MSG,
-    WM_CHAR, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_ERASEBKGND, WM_PAINT,
+    PostQuitMessage, SetWindowLongPtrW, CREATESTRUCTW, GWLP_USERDATA, MSG, WM_CLOSE, WM_CREATE,
+    WM_DESTROY, WM_ERASEBKGND, WM_PAINT,
 };
 
 use crate::event::keyboard::KeyboardEvent;

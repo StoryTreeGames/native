@@ -1,18 +1,19 @@
 extern crate storytree_native;
 
+use std::fmt::Debug;
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use storytree_native::event::run_with_state;
 use storytree_native::style::{Background, Theme};
+use storytree_native::toggle_fullscreen;
 use storytree_native::{
     event::{
         close,
         keyboard::{Key, KeyboardEvent},
-        run, Event,
+        Event,
     },
     prelude::*,
     Window,
 };
-use std::fmt::Debug;
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 #[derive(Clone)]
 struct State<T>(Arc<RwLock<T>>);
@@ -63,6 +64,9 @@ fn main() {
             Key::Shift => state.as_mut().shift = true,
             Key::Capital => state.as_mut().caps = true,
             Key::Escape => close(id),
+            Key::F11 => {
+                toggle_fullscreen(id);
+            }
             key => {
                 // Print key with current modifiers
                 println!("{:?}: {:?}", state.as_ref(), key);
