@@ -3,7 +3,7 @@ extern crate storytree_native;
 use storytree_native::{
     event::{
         Event
-        , keyboard::{Key, KeyEvent},
+        , keyboard::{KeyCode, KeyEvent},
     },
     modal::{Dialog, FontWeight},
     prelude::{WindowBuilder, WindowContext},
@@ -17,7 +17,7 @@ fn main() {
     // Run the Program, when the window opens `Escape` can be pressed to open a file select dialog
     App::run(|id, event| match event {
         Event::Keyboard(KeyEvent::KeyDown(key)) => match key {
-            Key::Escape => {
+            KeyCode::Escape => {
                 match Dialog::font()
                     .weight(FontWeight::Bold)
                     .underline()

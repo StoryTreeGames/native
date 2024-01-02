@@ -1,7 +1,7 @@
 extern crate storytree_native;
 
 use storytree_native::{prelude::*, Window};
-use storytree_native::event::{App, close, Event, keyboard::{Key, KeyEvent}, quit};
+use storytree_native::event::{App, close, Event, keyboard::{KeyCode, KeyEvent}, quit};
 use storytree_native::modal::{Button, Buttons, Dialog};
 use storytree_native::style::{Background, Theme};
 
@@ -16,7 +16,7 @@ fn main() {
 
     App::run(|id, event| match event {
         Event::Keyboard(KeyEvent::KeyDown(key)) => match key {
-            Key::Escape => {
+            KeyCode::Escape => {
                 close(id);
             }
             _ => {}

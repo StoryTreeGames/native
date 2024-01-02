@@ -4,10 +4,14 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+ico = "0.3.0"
 uuid = { version = "1.5.0", features = ["v4"] }
 
+[target.'cfg(windows)'.dependencies]
+ico = "0.3.0"
+
 # See about switching to windows-sys
-[dependencies.windows]
+[target.'cfg(windows)'.dependencies.windows]
 version = "0.52.0"
 features = [
     "Foundation",

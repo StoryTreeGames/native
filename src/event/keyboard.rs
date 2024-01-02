@@ -1,92 +1,12 @@
-use windows::Win32::Foundation::{LPARAM, WPARAM};
-use windows::Win32::UI::WindowsAndMessaging::{WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP};
-
 #[derive(Debug, Clone)]
 pub enum KeyEvent {
-    KeyDown(Key),
-    KeyUp(Key),
-    KeyHold(Key),
-}
-
-impl From<(u32, WPARAM, LPARAM)> for KeyEvent {
-    fn from(v: (u32, WPARAM, LPARAM)) -> Self {
-        match v.0 {
-            WM_KEYDOWN | WM_SYSKEYDOWN => {
-                if v.2 .0 & 1 << 30 == 0 {
-                    KeyEvent::KeyDown(Key::from(v.1))
-                } else {
-                    KeyEvent::KeyHold(Key::from(v.1))
-                }
-            }
-            WM_KEYUP | WM_SYSKEYUP => KeyEvent::KeyUp(Key::from(v.1)),
-            _ => panic!("Unknown keyboard event message: {}", v.0),
-        }
-    }
-}
-
-impl KeyEvent {
-    pub fn message(m: u32) -> bool {
-        match m {
-            WM_KEYDOWN | WM_SYSKEYDOWN | WM_KEYUP | WM_SYSKEYUP => true,
-            _ => false,
-        }
-    }
-}
-
-macro_rules! vkeys {
-    ($name: ident { $($key: ident = $value: expr),* }) => {
-        impl $name {
-            fn from_virtual(v: usize) -> Option<Self> {
-                match v {
-                    $($value => Some($name::$key),)*
-                    _ => None
-                }
-            }
-        }
-    };
-}
-
-macro_rules! keys {
-    ($name: ident { $($key: ident = $value: expr),* }) => {
-        impl $name {
-            fn from_key(v: usize) -> Option<Self> {
-                match v {
-                    $($value => Some($name::$key),)*
-                    _ => None
-                }
-            }
-        }
-    };
+    KeyDown(KeyCode),
+    KeyUp(KeyCode),
+    KeyHold(KeyCode),
 }
 
 #[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Eq, Hash)]
-pub enum Key {
-    A,
-    B,
-    C,
-    D,
-    E,
-    F,
-    G,
-    H,
-    I,
-    J,
-    K,
-    L,
-    M,
-    N,
-    O,
-    P,
-    Q,
-    R,
-    S,
-    T,
-    U,
-    V,
-    W,
-    X,
-    Y,
-    Z,
+pub enum KeyCode {
     Cancel,
     Back,
     Tab,
@@ -97,10 +17,7 @@ pub enum Key {
     Alt,
     Pause,
     Capital,
-    KanaHangul,
-    Junja,
     Final,
-    Kanji,
     Escape,
     Convert,
     NonConvert,
@@ -218,179 +135,9 @@ pub enum Key {
     Pa1,
     OEMClear,
 
-    Unkown(usize),
-}
-
-keys! {
-    Key {
-        A = 0x41,
-        B = 0x42,
-        C = 0x43,
-        D = 0x44,
-        E = 0x45,
-        F = 0x46,
-        G = 0x47,
-        H = 0x48,
-        I = 0x49,
-        J = 0x4a,
-        K = 0x4b,
-        L = 0x4c,
-        M = 0x4d,
-        N = 0x4e,
-        O = 0x4f,
-        P = 0x50,
-        Q = 0x51,
-        R = 0x52,
-        S = 0x53,
-        T = 0x54,
-        U = 0x55,
-        V = 0x56,
-        W = 0x57,
-        X = 0x58,
-        Y = 0x59,
-        Z = 0x5a
-    }
-}
-
-vkeys! {
-    Key {
-        Cancel = 0x03,
-        Back = 0x08,
-        Tab = 0x09,
-        Clear = 0x0c,
-        Return = 0x0d,
-        Shift = 0x10,
-        Control = 0x11,
-        Alt = 0x12,
-        Pause = 0x13,
-        Capital = 0x14,
-        KanaHangul = 0x15,
-        Junja = 0x17,
-        Final = 0x18,
-        Kanji = 0x19,
-        Escape = 0x1b,
-        Convert = 0x1c,
-        NonConvert = 0x1d,
-        Accept = 0x1e,
-        ModeChange = 0x1f,
-        Space = 0x20,
-        PageUp = 0x21,
-        PageDown = 0x22,
-        End = 0x23,
-        Home = 0x24,
-        Left = 0x25,
-        Up = 0x26,
-        Right = 0x27,
-        Down = 0x28,
-        Select = 0x29,
-        Print = 0x2a,
-        Execute = 0x2b,
-        Snapshot = 0x2c,
-        Insert = 0x2d,
-        Delete = 0x2e,
-        Help = 0x2f,
-        LWin = 0x5b,
-        RWin = 0x5c,
-        Apps = 0x5d,
-        Sleep = 0x5f,
-        NumPad0 = 0x60,
-        NumPad1 = 0x61,
-        NumPad2 = 0x62,
-        NumPad3 = 0x63,
-        NumPad4 = 0x64,
-        NumPad5 = 0x65,
-        NumPad6 = 0x66,
-        NumPad7 = 0x67,
-        NumPad8 = 0x68,
-        NumPad9 = 0x69,
-        Multiply = 0x6a,
-        Add = 0x6b,
-        Separator = 0x6c,
-        Subtract = 0x6d,
-        Decimal = 0x6e,
-        Divide = 0x6f,
-        F1 = 0x70,
-        F2 = 0x71,
-        F3 = 0x72,
-        F4 = 0x73,
-        F5 = 0x74,
-        F6 = 0x75,
-        F7 = 0x76,
-        F8 = 0x77,
-        F9 = 0x78,
-        F10 = 0x79,
-        F11 = 0x7a,
-        F12 = 0x7b,
-        F13 = 0x7c,
-        F14 = 0x7d,
-        F15 = 0x7e,
-        F16 = 0x7f,
-        F17 = 0x80,
-        F18 = 0x81,
-        F19 = 0x82,
-        F20 = 0x83,
-        F21 = 0x84,
-        F22 = 0x85,
-        F23 = 0x86,
-        F24 = 0x87,
-        NumLock = 0x90,
-        Scroll = 0x91,
-        LShift = 0xa0,
-        RShift = 0xa1,
-        LControl = 0xa2,
-        RControl = 0xa3,
-        LAlt = 0xa4,
-        RAlt = 0xa5,
-        BrowserBack = 0xa6,
-        BrowserForward = 0xa7,
-        BrowserRefresh = 0xa8,
-        BrowserStop = 0xa9,
-        BrowserSearch = 0xaa,
-        BrowserFavorites = 0xab,
-        BrowserHome = 0xac,
-        VolumeMute = 0xad,
-        VolumeDown = 0xae,
-        VolumeUp = 0xaf,
-        MediaNext = 0xb0,
-        MediaPrev = 0xb1,
-        MediaStop = 0xb2,
-        MediaPlayPause = 0xb3,
-        LaunchMail = 0xb4,
-        LaunchMediaSelect = 0xb5,
-        LaunchApp1 = 0xb6,
-        LaunchApp2 = 0xb7,
-        Semicolon = 0xba,
-        Plus = 0xbb,
-        Comma = 0xbc,
-        Minus = 0xbd,
-        Period = 0xbe,
-        Slash = 0xbf,
-        Tilde = 0xc0,
-        BackSlash = 0xdc,
-        LBracket = 0xdb,
-        RBracket = 0xdd,
-        Quote = 0xde,
-        OEM8 = 0xdf,
-        OEM102 = 0xe2,
-        ProcessKey = 0xe5,
-        Packet = 0xe7,
-        Attention = 0xf6,
-        CrSel = 0xf7,
-        ExSel = 0xf8,
-        EraseEof = 0xf9,
-        Play = 0xfa,
-        Zoom = 0xfb,
-        NoName = 0xfc,
-        Pa1 = 0xfd,
-        OEMClear = 0xfe
-    }
-}
-
-impl From<WPARAM> for Key {
-    fn from(v: WPARAM) -> Self {
-        match Key::from_virtual(v.0) {
-            Some(v) => v,
-            None => Key::from_key(v.0).unwrap_or(Key::Unkown(v.0)),
-        }
-    }
+    KanaHangul,
+    Junja,
+    Kanji,
+    Char(char),
+    Unkown(isize),
 }

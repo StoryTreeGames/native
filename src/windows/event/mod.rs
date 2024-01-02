@@ -1,18 +1,17 @@
+mod keyboard;
+mod mouse;
+
 use std::cell::RefCell;
 use std::mem::transmute;
 use std::sync::Arc;
 
 use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{CreateSolidBrush, FillRect, HDC};
-use windows::Win32::UI::WindowsAndMessaging::{
-    DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetMessageW, GetWindowLongPtrW,
-    PostQuitMessage, SetWindowLongPtrW, CREATESTRUCTW, GWLP_USERDATA, MSG, WM_CLOSE, WM_CREATE,
-    WM_DESTROY, WM_ERASEBKGND, WM_PAINT,
-};
+use windows::Win32::UI::WindowsAndMessaging::{DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetMessageW, GetWindowLongPtrW, PostQuitMessage, SetWindowLongPtrW, CREATESTRUCTW, GWLP_USERDATA, MSG, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_ERASEBKGND, WM_PAINT, WM_KEYDOWN, WM_SYSKEYDOWN, WM_KEYUP, WM_SYSKEYUP};
 
-use crate::event::keyboard::KeyEvent;
+use crate::event::keyboard::{KeyCode, KeyEvent};
 use crate::event::mouse::MouseEvent;
-use crate::event::{keyboard, mouse, Event, IntoEventResult, State};
+use crate::event::{keyboard as kbd, mouse as mse, Event, IntoEventResult, State};
 use crate::style::{Background, Theme};
 use crate::window::WindowOptions;
 use crate::windows::{is_dark_mode, swap_rb};
@@ -41,12 +40,28 @@ thread_local! {
     static HANDLER: RefCell<Handler> = RefCell::new(Handler::default());
 }
 
+impl From<(u32, WPARAM, LPARAM)> for KeyEvent {
+    fn from(v: (u32, WPARAM, LPARAM)) -> Self {
+        match v.0 {
+            WM_KEYDOWN | WM_SYSKEYDOWN => {
+                if v.2.0 & 1 << 30 == 0 {
+                    KeyEvent::KeyDown(KeyCode::from(v.1))
+                } else {
+                    KeyEvent::KeyHold(KeyCode::from(v.1))
+                }
+            }
+            WM_KEYUP | WM_SYSKEYUP => KeyEvent::KeyUp(KeyCode::from(v.1)),
+            _ => panic!("Unknown keyboard event message: {}", v.0),
+        }
+    }
+}
+
 /// Converts (u32, usize, isize) to Event
 impl From<(u32, WPARAM, LPARAM)> for Event {
     fn from(v: (u32, WPARAM, LPARAM)) -> Self {
         match v.0 {
-            _ if keyboard::KeyEvent::message(v.0) => Event::Keyboard(KeyEvent::from(v)),
-            _ if mouse::MouseEvent::message(v.0) => Event::Mouse(MouseEvent::from(v)),
+            _ if kbd::KeyEvent::message(v.0) => Event::Keyboard(KeyEvent::from(v)),
+            _ if mse::MouseEvent::message(v.0) => Event::Mouse(MouseEvent::from(v)),
             _ => panic!("Unknown event message: {}", v.0),
         }
     }
