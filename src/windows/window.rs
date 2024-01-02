@@ -1,33 +1,26 @@
 use std::ffi::c_void;
 use std::mem::size_of;
 use std::ops::DerefMut;
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use windows::core::HSTRING;
 use windows::Foundation::{EventRegistrationToken, TypedEventHandler};
+use windows::UI::ViewManagement::UISettings;
 use windows::Win32::Foundation::{BOOL, HANDLE, HMODULE, HWND, LPARAM, WPARAM};
 use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWINDOWATTRIBUTE};
 use windows::Win32::Graphics::Gdi::{
-    GetDC, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY,
+    GetDC, GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MonitorFromWindow, MONITORINFO,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows::Win32::UI::WindowsAndMessaging::{
-    CallWindowProcW, CloseWindow, CreateWindowExW, GetWindowLongW, GetWindowPlacement, LoadCursorW,
-    LoadImageW, RegisterClassW, SetWindowLongW, SetWindowPlacement, SetWindowPos, ShowWindow,
-    CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWL_STYLE, HICON, HWND_TOP, IDC_ARROW, IMAGE_ICON,
-    LR_DEFAULTSIZE, LR_LOADFROMFILE, LR_LOADTRANSPARENT, LR_SHARED, SWP_FRAMECHANGED, SWP_NOMOVE,
-    SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER, SW_HIDE, SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE,
-    SW_SHOWNORMAL, WINDOWPLACEMENT, WINDOW_EX_STYLE, WM_ERASEBKGND, WM_PAINT, WNDCLASSW,
-    WS_OVERLAPPEDWINDOW,
-};
-use windows::UI::ViewManagement::UISettings;
+use windows::Win32::UI::WindowsAndMessaging::{CallWindowProcW, CloseWindow, CreateWindowExW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GetWindowLongW, GetWindowPlacement, GWL_STYLE, HICON, HWND_TOP, IDC_ARROW, IMAGE_ICON, LoadCursorW, LoadImageW, LR_DEFAULTSIZE, LR_LOADFROMFILE, LR_LOADTRANSPARENT, LR_SHARED, RegisterClassW, SetWindowLongW, SetWindowPlacement, SetWindowPos, ShowWindow, SW_HIDE, SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE, SW_SHOWNORMAL, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER, WINDOW_EX_STYLE, WINDOW_STYLE, WINDOWPLACEMENT, WM_ERASEBKGND, WM_PAINT, WNDCLASSW, WS_CAPTION, WS_MINIMIZEBOX, WS_OVERLAPPED, WS_OVERLAPPEDWINDOW, WS_SYSMENU};
 
 use crate::e;
 use crate::error::Error;
 use crate::style::{Background, Theme};
 use crate::window::{WindowBuilder, WindowContext, WindowOptions};
 
-use super::{event::wnd_proc, is_dark_mode, IntoPCWSTR, UI_SETTINGS};
+use super::{event::wnd_proc, IntoPCWSTR, is_dark_mode, UI_SETTINGS};
 
 thread_local! {
     static WINDOWS: Mutex<Vec<Window>> = Mutex::new(Vec::new())
@@ -81,11 +74,17 @@ impl WindowBuilder for Builder {
     }
 
     fn icon(mut self, icon: &'static str) -> Self {
-        if !icon.ends_with(".ico") {
-            panic!("Icon must be an ico file");
-        }
-
         self.options.icon = Some(icon);
+        self
+    }
+
+    fn fixed(mut self) -> Self {
+        self.options.fixed_size = true;
+        self
+    }
+
+    fn size(mut self, width: u32, height: u32) -> Self {
+        self.options.size = Some((width, height));
         self
     }
 
@@ -96,6 +95,20 @@ impl WindowBuilder for Builder {
     fn show(mut self) -> Result<isize, Error> {
         self.options.show = true;
         self.create()
+    }
+}
+
+trait ToStyle {
+    fn to_style(&self) -> WINDOW_STYLE;
+}
+
+impl ToStyle for WindowOptions {
+    fn to_style(&self) -> WINDOW_STYLE {
+        if self.fixed_size {
+            WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU | WS_CAPTION
+        } else {
+            WS_OVERLAPPEDWINDOW
+        }
     }
 }
 
@@ -139,7 +152,7 @@ impl Window {
                     SetWindowLongW(
                         self.handle,
                         GWL_STYLE,
-                        style & !(WS_OVERLAPPEDWINDOW.0 as i32),
+                        style & !(self.options.to_style().0 as i32),
                     );
                     if let Err(err) = SetWindowPos(
                         self.handle,
@@ -156,7 +169,7 @@ impl Window {
             }
         } else {
             unsafe {
-                SetWindowLongW(self.handle, GWL_STYLE, style | WS_OVERLAPPEDWINDOW.0 as i32);
+                SetWindowLongW(self.handle, GWL_STYLE, style | self.options.to_style().0 as i32);
                 let _ = SetWindowPlacement(self.handle, self.prev_style.as_ref().unwrap());
                 let _ = SetWindowPos(
                     self.handle,
@@ -198,7 +211,13 @@ impl WindowContext for Window {
                 hCursor: e!(unsafe { LoadCursorW(None, IDC_ARROW) })?,
                 hInstance: window.instance.into(),
                 lpszClassName: window.class.as_pcwstr(),
-                hIcon: icon(window.options.icon.map(|i| HSTRING::from(i))),
+                hIcon: icon(window.options.icon.map(|i| {
+                    let mut path = PathBuf::from(i);
+                    if path.extension().is_none() {
+                        path = path.with_extension("ico");
+                    }
+                    HSTRING::from(path.display().to_string())
+                })),
                 style: CS_HREDRAW | CS_VREDRAW,
                 lpfnWndProc: Some(wnd_proc),
                 ..Default::default()
@@ -207,16 +226,19 @@ impl WindowContext for Window {
             let atom = unsafe { RegisterClassW(&wc) };
             debug_assert!(atom != 0);
 
+            let size = window.options.size.map_or((CW_USEDEFAULT, CW_USEDEFAULT), |(w, h)| {
+                (w as i32, h as i32)
+            });
             unsafe {
                 window.set_handle(CreateWindowExW(
                     WINDOW_EX_STYLE::default(),
                     window.class.as_pcwstr(),
                     HSTRING::from(window.options.title).as_pcwstr(),
-                    WS_OVERLAPPEDWINDOW,
+                    window.options.to_style(),
                     CW_USEDEFAULT,
                     CW_USEDEFAULT,
-                    CW_USEDEFAULT,
-                    CW_USEDEFAULT,
+                    size.0,
+                    size.1,
                     None,
                     None,
                     window.instance.clone(),
@@ -355,7 +377,7 @@ impl WindowContext for Window {
 /// TODO: Automatic loading of other file formats?
 pub fn icon(path: Option<HSTRING>) -> HICON {
     let result = HICON(path.map_or(0, |icon| {
-        match unsafe {
+        unsafe {
             LoadImageW(
                 None,
                 icon.as_pcwstr(),
@@ -364,14 +386,10 @@ pub fn icon(path: Option<HSTRING>) -> HICON {
                 0,
                 LR_DEFAULTSIZE | LR_LOADFROMFILE | LR_SHARED | LR_LOADTRANSPARENT,
             )
-        } {
-            Ok(hicon) => hicon,
-            Err(err) => {
-                eprintln!("{}", Error::from(err));
-                HANDLE(0)
-            }
-        }
-            .0
+        }.unwrap_or_else(|err| {
+            eprintln!("{}", Error::from(err));
+            HANDLE(0)
+        }).0
     }));
     result
 }

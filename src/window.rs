@@ -11,6 +11,8 @@ pub struct WindowOptions {
 
     pub theme: Theme,
     pub background: Background,
+    pub fixed_size: bool,
+    pub size: Option<(u32, u32)>,
 
     pub show: bool,
 }
@@ -23,6 +25,8 @@ impl Default for WindowOptions {
 
             theme: Theme::Auto,
             background: Background::default(),
+            fixed_size: false,
+            size: None,
 
             show: false,
         }
@@ -56,6 +60,8 @@ pub trait WindowBuilder {
     fn theme(self, theme: Theme) -> Self;
     fn background(self, background: Background) -> Self;
     fn icon(self, icon: &'static str) -> Self;
+    fn fixed(self) -> Self;
+    fn size(self, width: u32, height: u32) -> Self;
     fn create(self) -> Result<isize, Error>
     where
         Self: Sized;
