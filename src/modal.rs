@@ -61,6 +61,7 @@ impl Dialog {
 #[derive(Default, Debug, Clone)]
 pub struct ColorDialog {
     initial_color: Option<u32>,
+    custom_colors: Vec<u32>
 }
 
 impl ColorDialog {
@@ -72,25 +73,18 @@ impl ColorDialog {
 
     pub fn show_with(&self, parent: isize) -> Result<DialogAction, Error> {
         #[cfg(target_os = "windows")]
-        crate::windows::modal::ColorPicker::new(self.initial_color).show_with(parent)
+        crate::windows::modal::ColorPicker::new(self.initial_color, self.custom_colors.clone()).show_with(parent)
     }
 
     /// Show the color dialog
     pub fn show(&self) -> Result<DialogAction, Error> {
         #[cfg(target_os = "windows")]
-        crate::windows::modal::ColorPicker::new(self.initial_color).show()
+        crate::windows::modal::ColorPicker::new(self.initial_color, self.custom_colors.clone()).show()
     }
 
-    /// Get the current custom colors set by the user
-    pub fn get_custom_colors() -> Vec<u32> {
-        #[cfg(target_os = "windows")]
-        crate::windows::modal::ColorPicker::get_custom_colors()
-    }
-
-    /// Set the current custom colors for the dialog
-    pub fn set_custom_colors(colors: Vec<u32>) {
-        #[cfg(target_os = "windows")]
-        crate::windows::modal::ColorPicker::set_custom_colors(colors)
+    pub fn custom_colors(mut self, colors: Vec<u32>) -> Self {
+        self.custom_colors = colors;
+        self
     }
 }
 
@@ -132,7 +126,7 @@ pub trait ToPath {
 pub enum DialogAction {
     Files(Vec<PathBuf>),
     File(PathBuf),
-    Color(u32),
+    Color(u32, Vec<u32>),
     Font {
         name: String,
         size: u32,
