@@ -30,25 +30,26 @@ application generation using native system API calls.
   - [x] Window
   - [ ] Linux
   - [ ] Apple
-- [ ] Color Selector
+- [ ] Color Picker 
   - [x] Window
   - [ ] Linux
   - [ ] Apple
-- [ ] Font Selector
+- [ ] Font Picker 
   - [x] Window
   - [ ] Linux
   - [ ] Apple
+
+### Menu: (File, Edit, etc...)
+  - [ ] Windows
+    - Part of caption
+  - [ ] Linux
+    - Part of caption
+  - [ ] Macos
+    - Part of top bar/status bar
 
 ### Systray Menu creation and customization
   - [ ] Window
     - [so:ref](https://stackoverflow.com/questions/68474486/creating-system-tray-right-click-menu-c)
-  - [ ] Linux
-  - [ ] Apple
-
-### Menu creation and customization
-  - Window specific menus
-  - Reusable
-  - [ ] Window
   - [ ] Linux
   - [ ] Apple
 
@@ -65,3 +66,6 @@ application generation using native system API calls.
     - [ ] Window
     - [ ] Linux
     - [ ] Apple
+
+### Ideas
+- Custom title bar

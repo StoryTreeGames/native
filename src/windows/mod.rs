@@ -9,6 +9,7 @@ use windows::Win32::UI::Controls::Dialogs::{
 };
 use windows::Win32::UI::WindowsAndMessaging::IsZoomed;
 use windows::UI::ViewManagement::{UIColorType, UISettings};
+use windows::Win32::System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUninitialize};
 
 pub mod event;
 pub mod modal;
@@ -109,4 +110,16 @@ pub(crate) fn swap_rb(value: u32) -> u32 {
 /// Check if a window is maxamized
 pub fn is_maxamized(id: isize) -> bool {
     unsafe { IsZoomed(HWND(id)) }.into()
+}
+
+pub(crate) fn co_initialize() {
+    unsafe {
+        CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+    }
+}
+
+pub(crate) fn co_uninitialize() {
+    unsafe {
+        CoUninitialize();
+    }
 }

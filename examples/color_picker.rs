@@ -20,7 +20,7 @@ static COLORS_CACHE: &'static str = "examples/custom_colors.txt";
 fn load_custom_colors() -> Vec<u32> {
     match fs::read_to_string(COLORS_CACHE) {
         Ok(text) => {
-            text.lines().filter_map(|line| {
+            text.split(",").filter_map(|line| {
                 if line.trim().len() > 0 {
                     return line.parse::<u32>().ok();
                 }
@@ -35,7 +35,10 @@ fn load_custom_colors() -> Vec<u32> {
 
 /// Save custom colors to cache file
 fn save_custom_colors(colors: &Vec<u32>) {
-    fs::write(COLORS_CACHE, colors.iter().map(|v| format!("{}\n", v)).collect::<String>()).expect("Could not save custom colors");
+    fs::write(
+        COLORS_CACHE,
+        colors.iter().map(|v| v.to_string()).collect::<Vec<String>>().join(","),
+    ).expect("Could not save custom colors");
 }
 
 fn main() {

@@ -7,14 +7,14 @@ use storytree_native::style::{Background, Theme};
 
 fn main() {
     let _ = Window::builder()
-        .title("Rust Window")
+    .title("Rust Window")
         .theme(Theme::Auto)
         .background(Background::new(0xA35FC1, 0x0B0B0B))
         .icon("../../assets/images/NativeUI.ico")
         .show()
         .unwrap();
 
-    App::run(|id, event| match event {
+    App::run(|id, event, _| match event {
         Event::Keyboard(KeyEvent::KeyDown(key)) => match key {
             KeyCode::Escape => {
                 close(id);

@@ -9,7 +9,7 @@ use windows::Win32::UI::Shell::{
 use crate::e;
 use crate::error::Error;
 use crate::modal::{DialogAction, FileDialog, ToPath};
-use crate::windows::IntoPCWSTR;
+use crate::windows::{co_initialize, co_uninitialize, IntoPCWSTR};
 
 use super::{hresult_from_win, to_shell_item, CLSID_FILEOPENDIALOG, CLSID_FILESAVEDIALOG};
 
@@ -18,15 +18,23 @@ enum IFileDialog {
     Save(IFileSaveDialog),
 }
 
+impl Drop for IFileDialog {
+    fn drop(&mut self) {
+        co_uninitialize();
+    }
+}
+
 impl IFileDialog {
     fn open() -> Result<Self, Error> {
         Ok(IFileDialog::Open(unsafe {
+            co_initialize();
             CoCreateInstance(&CLSID_FILEOPENDIALOG, None, CLSCTX_INPROC_SERVER)?
         }))
     }
 
     fn save() -> Result<Self, Error> {
         Ok(IFileDialog::Save(unsafe {
+            co_initialize();
             CoCreateInstance(&CLSID_FILESAVEDIALOG, None, CLSCTX_INPROC_SERVER)?
         }))
     }
