@@ -6,21 +6,29 @@ use std::sync::Mutex;
 
 use windows::core::HSTRING;
 use windows::Foundation::{EventRegistrationToken, TypedEventHandler};
-use windows::UI::ViewManagement::UISettings;
 use windows::Win32::Foundation::{BOOL, HANDLE, HMODULE, HWND, LPARAM, WPARAM};
 use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWINDOWATTRIBUTE};
 use windows::Win32::Graphics::Gdi::{
-    GetDC, GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MonitorFromWindow, MONITORINFO,
+    GetDC, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTOPRIMARY,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows::Win32::UI::WindowsAndMessaging::{CallWindowProcW, CloseWindow, CreateWindowExW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GetWindowLongW, GetWindowPlacement, GWL_STYLE, HICON, HWND_TOP, IDC_ARROW, IMAGE_ICON, LoadCursorW, LoadImageW, LR_DEFAULTSIZE, LR_LOADFROMFILE, LR_LOADTRANSPARENT, LR_SHARED, RegisterClassW, SetWindowLongW, SetWindowPlacement, SetWindowPos, ShowWindow, SW_HIDE, SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE, SW_SHOWNORMAL, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER, WINDOW_EX_STYLE, WINDOW_STYLE, WINDOWPLACEMENT, WM_ERASEBKGND, WM_PAINT, WNDCLASSW, WS_CAPTION, WS_MINIMIZEBOX, WS_OVERLAPPED, WS_OVERLAPPEDWINDOW, WS_SYSMENU};
+use windows::Win32::UI::WindowsAndMessaging::{
+    CallWindowProcW, CloseWindow, CreateWindowExW, GetWindowLongW, GetWindowPlacement, LoadCursorW,
+    LoadImageW, RegisterClassW, SetWindowLongW, SetWindowPlacement, SetWindowPos, ShowWindow,
+    CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, GWL_STYLE, HICON, HWND_TOP, IDC_ARROW, IMAGE_ICON,
+    LR_DEFAULTSIZE, LR_LOADFROMFILE, LR_LOADTRANSPARENT, LR_SHARED, SWP_FRAMECHANGED, SWP_NOMOVE,
+    SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_NOZORDER, SW_HIDE, SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE,
+    SW_SHOWNORMAL, WINDOWPLACEMENT, WINDOW_EX_STYLE, WINDOW_STYLE, WM_ERASEBKGND, WM_PAINT,
+    WNDCLASSW, WS_CAPTION, WS_MINIMIZEBOX, WS_OVERLAPPED, WS_OVERLAPPEDWINDOW, WS_SYSMENU,
+};
+use windows::UI::ViewManagement::UISettings;
 
 use crate::e;
 use crate::error::Error;
 use crate::style::{Background, Theme};
 use crate::window::{WindowBuilder, WindowContext, WindowOptions};
 
-use super::{event::wnd_proc, IntoPCWSTR, is_dark_mode, UI_SETTINGS};
+use super::{event::wnd_proc, is_dark_mode, IntoPCWSTR, UI_SETTINGS};
 
 thread_local! {
     static WINDOWS: Mutex<Vec<Window>> = Mutex::new(Vec::new())
@@ -142,11 +150,11 @@ impl Window {
             };
             if unsafe { GetWindowPlacement(self.handle, self.prev_style.as_mut().unwrap()) }.is_ok()
                 && bool::from(unsafe {
-                GetMonitorInfoW(
-                    MonitorFromWindow(self.handle, MONITOR_DEFAULTTOPRIMARY),
-                    &mut mi,
-                )
-            })
+                    GetMonitorInfoW(
+                        MonitorFromWindow(self.handle, MONITOR_DEFAULTTOPRIMARY),
+                        &mut mi,
+                    )
+                })
             {
                 unsafe {
                     SetWindowLongW(
@@ -163,13 +171,18 @@ impl Window {
                         mi.rcMonitor.bottom - mi.rcMonitor.top,
                         SWP_NOOWNERZORDER | SWP_FRAMECHANGED,
                     ) {
+                        #[cfg(debug_assertions)]
                         eprintln!("{:?}", err);
                     }
                 }
             }
         } else {
             unsafe {
-                SetWindowLongW(self.handle, GWL_STYLE, style | self.options.to_style().0 as i32);
+                SetWindowLongW(
+                    self.handle,
+                    GWL_STYLE,
+                    style | self.options.to_style().0 as i32,
+                );
                 let _ = SetWindowPlacement(self.handle, self.prev_style.as_ref().unwrap());
                 let _ = SetWindowPos(
                     self.handle,
@@ -226,9 +239,12 @@ impl WindowContext for Window {
             let atom = unsafe { RegisterClassW(&wc) };
             debug_assert!(atom != 0);
 
-            let size = window.options.size.map_or((CW_USEDEFAULT, CW_USEDEFAULT), |(w, h)| {
-                (w as i32, h as i32)
-            });
+            let size = window
+                .options
+                .size
+                .map_or((CW_USEDEFAULT, CW_USEDEFAULT), |(w, h)| {
+                    (w as i32, h as i32)
+                });
             unsafe {
                 window.set_handle(CreateWindowExW(
                     WINDOW_EX_STYLE::default(),
@@ -286,7 +302,7 @@ impl WindowContext for Window {
                                         &is_dark_mode() as *const _ as *const _,
                                         4,
                                     )
-                                        .unwrap();
+                                    .unwrap();
                                     CallWindowProcW(
                                         Some(wnd_proc),
                                         handle,
@@ -386,10 +402,13 @@ pub fn icon(path: Option<HSTRING>) -> HICON {
                 0,
                 LR_DEFAULTSIZE | LR_LOADFROMFILE | LR_SHARED | LR_LOADTRANSPARENT,
             )
-        }.unwrap_or_else(|err| {
+        }
+        .unwrap_or_else(|err| {
+            #[cfg(debug_assertions)]
             eprintln!("{}", Error::from(err));
             HANDLE(0)
-        }).0
+        })
+        .0
     }));
     result
 }

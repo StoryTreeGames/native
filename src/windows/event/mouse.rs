@@ -1,19 +1,21 @@
-use windows::Win32::Foundation::{LPARAM, WPARAM};
-use windows::Win32::UI::Controls::{WM_MOUSEHOVER, WM_MOUSELEAVE};
-use windows::Win32::UI::WindowsAndMessaging::{WM_CAPTURECHANGED, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDBLCLK, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDBLCLK, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDBLCLK, WM_XBUTTONDOWN, WM_XBUTTONUP};
 use crate::event::mouse::{MouseButton, MouseEvent, MouseEventType};
 use crate::windows::{get_wheel_delta_wparam, hiword, loword};
+use windows::Win32::Foundation::{LPARAM, WPARAM};
+use windows::Win32::UI::Controls::{WM_MOUSEHOVER, WM_MOUSELEAVE};
+use windows::Win32::UI::WindowsAndMessaging::{
+    WM_CAPTURECHANGED, WM_LBUTTONDBLCLK, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDBLCLK,
+    WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDBLCLK,
+    WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDBLCLK, WM_XBUTTONDOWN, WM_XBUTTONUP,
+};
 
 impl MouseEvent {
     pub fn message(m: u32) -> bool {
         match m {
-            WM_LBUTTONDBLCLK | WM_LBUTTONDOWN | WM_LBUTTONUP |
-            WM_MBUTTONDBLCLK | WM_MBUTTONDOWN | WM_MBUTTONUP |
-            WM_RBUTTONDBLCLK | WM_RBUTTONDOWN | WM_RBUTTONUP |
-            WM_XBUTTONDBLCLK | WM_XBUTTONDOWN | WM_XBUTTONUP |
-            WM_MOUSEMOVE | WM_MOUSEWHEEL | WM_MOUSEHOVER |
-            WM_MOUSELEAVE | WM_MOUSEHWHEEL | WM_CAPTURECHANGED => true,
-            _ => false
+            WM_LBUTTONDBLCLK | WM_LBUTTONDOWN | WM_LBUTTONUP | WM_MBUTTONDBLCLK
+            | WM_MBUTTONDOWN | WM_MBUTTONUP | WM_RBUTTONDBLCLK | WM_RBUTTONDOWN | WM_RBUTTONUP
+            | WM_XBUTTONDBLCLK | WM_XBUTTONDOWN | WM_XBUTTONUP | WM_MOUSEMOVE | WM_MOUSEWHEEL
+            | WM_MOUSEHOVER | WM_MOUSELEAVE | WM_MOUSEHWHEEL | WM_CAPTURECHANGED => true,
+            _ => false,
         }
     }
 }
@@ -21,9 +23,9 @@ impl MouseEvent {
 impl From<(u32, WPARAM, LPARAM)> for MouseEvent {
     fn from(value: (u32, WPARAM, LPARAM)) -> Self {
         MouseEvent {
-            x: loword(value.2.0 as usize),
-            y: hiword(value.2.0 as usize),
-            etype: MouseEventType::from((value.0, value.1.0)),
+            x: loword(value.2 .0 as usize),
+            y: hiword(value.2 .0 as usize),
+            etype: MouseEventType::from((value.0, value.1 .0)),
         }
     }
 }
@@ -51,11 +53,12 @@ impl From<(u32, usize)> for MouseEventType {
 
             WM_MOUSEMOVE => MouseEventType::Move,
             WM_MOUSEHOVER => MouseEventType::Hover,
-            533 => { MouseEventType::Ignore }
+            533 => MouseEventType::Ignore,
             _ => {
+                #[cfg(debug_assertions)]
                 eprintln!("Unknown mouse event message: {}", value.0);
                 MouseEventType::Ignore
-            },
+            }
         }
     }
 }

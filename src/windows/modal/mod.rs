@@ -37,7 +37,6 @@ pub(crate) fn to_shell_item(path: &str) -> Result<IShellItem, Error> {
     //TODO: Auto expand `~`
     let path = PathBuf::from(path);
 
-    println!("{:?}", path);
     let path = match path.canonicalize() {
         Ok(path) => path,
         Err(_) => {

@@ -7,7 +7,13 @@ use std::sync::Arc;
 
 use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{CreateSolidBrush, FillRect, HDC};
-use windows::Win32::UI::WindowsAndMessaging::{DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetMessageW, GetWindowLongPtrW, PostQuitMessage, SetWindowLongPtrW, CREATESTRUCTW, GWLP_USERDATA, MSG, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_ERASEBKGND, WM_PAINT, WM_KEYDOWN, WM_SYSKEYDOWN, WM_KEYUP, WM_SYSKEYUP};
+use windows::Win32::System::Console::{FreeConsole, GetConsoleWindow};
+use windows::Win32::UI::WindowsAndMessaging::{
+    DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetMessageW, GetWindowLongPtrW,
+    PostQuitMessage, SetWindowLongPtrW, ShowWindow, CREATESTRUCTW, GWLP_USERDATA, MSG, SW_HIDE,
+    WM_CLOSE, WM_CREATE, WM_DESTROY, WM_ERASEBKGND, WM_KEYDOWN, WM_KEYUP, WM_PAINT, WM_SYSKEYDOWN,
+    WM_SYSKEYUP,
+};
 
 use crate::event::keyboard::{KeyCode, KeyEvent};
 use crate::event::mouse::MouseEvent;
@@ -44,7 +50,7 @@ impl From<(u32, WPARAM, LPARAM)> for KeyEvent {
     fn from(v: (u32, WPARAM, LPARAM)) -> Self {
         match v.0 {
             WM_KEYDOWN | WM_SYSKEYDOWN => {
-                if v.2.0 & 1 << 30 == 0 {
+                if v.2 .0 & 1 << 30 == 0 {
                     KeyEvent::KeyDown(KeyCode::from(v.1))
                 } else {
                     KeyEvent::KeyHold(KeyCode::from(v.1))
@@ -77,6 +83,16 @@ where
     F: (Fn(isize, Event, State<T>) -> R) + 'static + Sync + Send,
     T: Send + Sync + Clone + 'static,
 {
+    #[cfg(feature = "hide-console")]
+    {
+        // Free the console
+        unsafe { FreeConsole() }.unwrap();
+        // Hide current console window
+        let window = unsafe { GetConsoleWindow() };
+        if window.0 != 0 {
+            unsafe { ShowWindow(window, SW_HIDE) };
+        }
+    }
     let mut message = MSG::default();
     let state = state;
 

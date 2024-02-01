@@ -2,18 +2,18 @@ extern crate storytree_native;
 
 use std::fmt::Debug;
 
+use storytree_native::event::App;
+use storytree_native::style::{Background, Theme};
+use storytree_native::toggle_fullscreen;
 use storytree_native::{
     event::{
         close,
-        Event,
         keyboard::{KeyCode, KeyEvent},
+        Event,
     },
     prelude::*,
     Window,
 };
-use storytree_native::event::App;
-use storytree_native::style::{Background, Theme};
-use storytree_native::toggle_fullscreen;
 
 /// Controls the state of the modifier keys
 #[derive(Debug, Default, Clone, Copy)]
@@ -34,7 +34,7 @@ fn main() {
         .show()
         .unwrap();
 
-    App::run_with(KeyState::default(),  |id, event, state| match event {
+    App::run_with(KeyState::default(), |id, event, state| match event {
         Event::Keyboard(KeyEvent::KeyDown(key)) => match key {
             KeyCode::Control => state.as_mut().ctrl = true,
             KeyCode::Alt => state.as_mut().alt = true,
